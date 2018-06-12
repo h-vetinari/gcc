@@ -26405,6 +26405,11 @@ _ACEOF
 fi
 done
 
+# The check above works only if aligned_alloc is present as a symbol in libc.so
+# Since we provide a header only implementation, override the value here
+cat >>confdefs.h <<_ACEOF
+#define `$as_echo "HAVE_aligned_alloc" | $as_tr_cpp` 1
+_ACEOF
 
   # For iconv support.
 
@@ -38403,6 +38408,9 @@ _ACEOF
 fi
 done
 
+cat >>confdefs.h <<_ACEOF
+#define `$as_echo "HAVE_aligned_alloc" | $as_tr_cpp` 1
+_ACEOF
     ;;
 
   *-fuchsia*)
@@ -42318,6 +42326,10 @@ fi
 done
 
 
+cat >>confdefs.h <<_ACEOF
+#define `$as_echo "HAVE_aligned_alloc" | $as_tr_cpp` 1
+_ACEOF
+
     ;;
   *-mingw32*)
 
@@ -45923,6 +45935,10 @@ _ACEOF
 
 fi
 done
+
+cat >>confdefs.h <<_ACEOF
+#define `$as_echo "HAVE_aligned_alloc" | $as_tr_cpp` 1
+_ACEOF
 
     ;;
   *-qnx6.1* | *-qnx6.2*)
