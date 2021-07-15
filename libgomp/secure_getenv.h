@@ -25,7 +25,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #define _SECURE_GETENV_H 1
 
 /* Secure getenv() which returns NULL if running as SUID/SGID.  */
-#ifndef HAVE_SECURE_GETENV
+#if __x86_64__
 #if defined (HAVE_UNISTD_H) && defined (HAVE_GETUID) \
   && defined (HAVE_GETEUID) && defined (HAVE_GETGID) \
   && defined (HAVE_GETEGID)
