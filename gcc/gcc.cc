@@ -2388,7 +2388,8 @@ read_specs (const char *filename, bool main_p, bool user_p)
       /* Is this a special command that starts with '%'? */
       /* Don't allow this for the main specs file, since it would
 	 encourage people to overwrite it.  */
-      if (*p == '%' && !main_p)
+      /* ::conda-forge:: allow use of commands in main specs */
+      if (*p == '%')
 	{
 	  p1 = p;
 	  while (*p && *p != '\n')
