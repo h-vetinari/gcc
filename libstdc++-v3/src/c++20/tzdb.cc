@@ -37,8 +37,12 @@
 #include <mutex>      // mutex
 #include <filesystem> // filesystem::read_symlink
 
-#ifndef _AIX
-# include <cstdlib>   // getenv
+#if defined(__linux__)
+# include <dlfcn.h>   // dladdr
+# include <cstdlib>   // free, malloc, memcpy, realpath
+# include <cstring>   // strlen
+#else defined(_WIN32)
+# include <windows.h>
 #endif
 
 #if defined __GTHREADS && ATOMIC_POINTER_LOCK_FREE == 2
@@ -68,20 +72,67 @@ namespace __gnu_cxx
   // Cannot override weak symbols on AIX.
   const char* (*zoneinfo_dir_override)() = nullptr;
 #else
-  [[gnu::weak]] const char* zoneinfo_dir_override();
-
-#if defined(__APPLE__) || defined(__hpux__) \
-  || (defined(__VXWORKS__) && !defined(__RTP__))
-  // Need a weak definition for Mach-O et al.
   [[gnu::weak]] const char* zoneinfo_dir_override()
   {
+    // get path to library we're in, to determine our location relative to $PREFIX;
+    // with help from the MIT-licensed https://github.com/gpakosz/whereami
+    void* addr = __builtin_extract_return_addr(__builtin_return_address(0));
+    char* this_lib;
+#ifdef _WIN32
+    // we're in %PREFIX%\Library\bin\libstdc++-6.dll
+#   define TO_PREFIX "/../.."
+    // needs single quotes for character (not string) literal
+#   define PATH_SEP '\\'
+    wchar_t buffer[MAX_PATH];
+    HMODULE hm = NULL;
+    // non-zero return means success
+    if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+        GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+        (LPCSTR) addr, &hm)) {
+      // returns length of string (not counting null byte), see
+      // https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getmodulefilenamew#return-value
+      DWORD total_length = GetModuleFileNameW(hm, buffer, sizeof(buffer))
+      if (total_length) {
+        this_lib = (char*)malloc(total_length + 1);
+        memcpy(this_lib, buffer, total_length);
+#else
+    // we're in $PREFIX/lib/libstdcxx.so
+#   define TO_PREFIX "/.."
+#   define PATH_SEP '/'
+    char buffer[PATH_MAX];
+    int i;
+    Dl_info info;
+
+    if (dladdr(addr, &info)) {
+      char* resolved = realpath(info.dli_fname, buffer);
+      if (resolved) {
+        int total_length = (int)strlen(resolved);
+        this_lib = (char*)malloc(total_length + 1);
+        memcpy(this_lib, resolved, total_length);
+#endif
+
+        for (i = (int)total_length - 1; i >= 0; --i) {
+          if (this_lib[i] == PATH_SEP) {
+            // set to null byte so the string ends before the basename
+            this_lib[i] = '\0';
+            break;
+          }
+        }
+        // <string> is included through <chrono>
+        std::string tz_dir(this_lib);
+        tz_dir += TO_PREFIX;
+        tz_dir += "/share/zoneinfo";
+        // std::string constructor deep-copies
+        free(this_lib);
+        return tz_dir.c_str();
+      }
+    }
 #ifdef _GLIBCXX_ZONEINFO_DIR
     return _GLIBCXX_ZONEINFO_DIR;
 #else
     return nullptr;
 #endif
   }
-#endif
 #endif
 }
 
